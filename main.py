@@ -1,6 +1,5 @@
 import datetime
 from flask_login import LoginManager, UserMixin
-from flask_migrate import Migrate
 from flask import Flask, render_template, app, request
 from flask_restful import Api, Resource, reqparse
 from flask_sqlalchemy import SQLAlchemy
@@ -27,8 +26,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://%(user)s:\
 app.config["SECRET_KEY"] = "ich-lebe-diese"
 
 db = SQLAlchemy(app)
-migrate = Migrate(app, db)
-jwt = JWTManager(app)
 
 
 class ProductCategories(db.Model):
