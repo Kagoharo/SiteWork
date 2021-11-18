@@ -10,31 +10,34 @@ from main import db
 @app.route("/register", methods=["POST", "GET"])
 def register():
     if request.method == "POST":
-        session.pop('_flashes', None)
-        email = request.form.get('email')
-        password = request.form.get('password')
+        data = request.get_json()
+        email = data["email"]
+        password = data["password"]
+        password2 = data["password_confirmation"]
+        user = User.query.get(data["email"])
+        if email != user.email and password == password2:
+            new_user = User(email=data["email"], password=data["password"])
+            db.session.add(new_user)
+            db.session.commit()
+            return jsonify({"msg": "Account successfully created"}), 200
+        elif email != user.email:
+            return jsonify({"msg": "Email already in use"}), 401
+        elif password != password2:
+            return jsonify({"msg": "Passwords don't match"}), 401
 
-        user = LoginCredentials.query.filter_by(email=email).first()
-        if user:
-            if check_password_hash(user.password, password):
-                flash('Logged in successfully', category='success')
-            else:
-                flash('Incorrect password, try again', category='error')
-        else:
-            flash('Email does not exist', category='error')
-
-    return True
+    access_token = create_access_token(identity=email)
+    return jsonify(access_token=access_token)
 
 
-@app.route("/login", methods=["POST", "GET"])
+@app.route("/login: Bearer <access_token>", methods=["POST"])
 def login():
     if request.method == "POST":
-        user = db.getUserByEmail(request.form['email'])
-        if user and check_password_hash(user['psw'], request.form['psw']):
-            userlogin = UserLogin().create(user)
-            login_user(userlogin)
-            return redirect(url_for('main'))
+        data = request.get_json()
+        username = data["email"]
+        password = data["password"]
+        user = User.query.get(data["email"])
+    if username != user.email or password != user.password:
+        return jsonify({"msg": "Bad username or password"}), 401
 
-        flash("Неверная пара логин/пароль", "error")
-
-    return
+    access_token = create_access_token(identity=username)
+    return jsonify(access_token=access_token)
