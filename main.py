@@ -1,10 +1,17 @@
 import datetime
-from flask_login import LoginManager
+from flask_login import LoginManager, UserMixin
 from flask_migrate import Migrate
 from flask import Flask, render_template, app, request
 from flask_restful import Api, Resource, reqparse
 from flask_sqlalchemy import SQLAlchemy
-#from Models import ProductCategories, Product, History, LoginCredentials
+from flask import Flask
+from flask import jsonify
+from flask import request
+from flask_jwt_extended import create_access_token
+from flask_jwt_extended import get_jwt_identity
+from flask_jwt_extended import jwt_required
+from flask_jwt_extended import JWTManager
+from werkzeug.security import check_password_hash
 
 app = Flask(__name__)
 
@@ -17,11 +24,11 @@ POSTGRES = {
 }
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://%(user)s:\
 %(pw)s@%(host)s:%(port)s/%(db)s' % POSTGRES
+app.config["SECRET_KEY"] = "ich-lebe-diese"
 
-api = Api(app)
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
-login_manager = LoginManager(app)
+jwt = JWTManager(app)
 
 
 class ProductCategories(db.Model):
@@ -65,16 +72,18 @@ class History(db.Model):
         return f"{self.id}:{self.date_of_change}:{self.old_amount}:{self.new_amount}:{self.pid}"
 
 
-class LoginCredentials(db.Model):
-    __tablename__ = 'login_credentials'
+class User(db.Model):
+    __tablename__ = "users"
 
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(50))
-    password = db.Column(db.String(25))
-    created_on = db.Column(db.DateTime)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    alternative_id = db.Column(db.Integer, primary_key = True, autoincrement=True)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    registered_on = db.Column(db.DateTime, nullable=False)
 
     def __repr__(self):
-        return f"{self.id}:{self.email}:{self.password}:{self.created_on}"
+        return f"{self.id}:{self.email}:{self.password}:{self.registered_on}:{self.admin}"
+
 
 @app.route('/categories', methods=['POST', 'GET'])
 def handle_categories():
@@ -143,6 +152,7 @@ def handle_products():
             } for products in products]
         return {"products": results}
 
+
 @app.route('/products/<int:product_pid>', methods=['GET', 'PUT', 'DELETE'])
 def handle_product(product_pid):
     product = Product.query.get(product_pid)
@@ -165,6 +175,7 @@ def handle_product(product_pid):
         db.session.delete(product)
         db.session.commit()
         return {"message": f"product {product.name} successfully deleted."}
+
 
 if __name__ == "__main__":
     app.run(debug=True)
